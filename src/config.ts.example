@@ -1,0 +1,49 @@
+// --------------------------------------------------------------
+// Copy this file to config.ts and edit with your data.
+// You need to create a new bot with @BotFather, and copy here
+// the token and the name of the command you have assigned to it.
+// --------------------------------------------------------------
+
+// @yourname_bot
+// https://t.me/yourname_bot
+export const token = "1234567890abcdefghijklmnopqrstuvwxyz";
+
+export const command = /^\/directory/;
+
+export const start_menu = "main";
+
+export const menus = {
+  "main": {
+    name: "This is the main menu",
+    options: [
+      ["Submenu 1", "submenu_1", null],
+      ["Submenu 2", "submenu_2", null],
+    ],
+  },
+  "submenu_1": {
+    name: "This is the first submenu",
+    options: [
+      ["Web", null, "http://www.example.com"],
+      ["Facebook", null, "https://facebook.com/example"],
+      ["Twitter", null, "https://twitter.com/example"],
+      ["[Return to main menu]", "main", null],
+    ],
+  },
+  "submenu_2": {
+    name: "This is the second submenu",
+    options: [
+      ["Other web", null, "https://other.example.com"],
+      ["Nested submenu", "nested_submenu", null],
+      ["[Return to main menu]", "main", null],
+    ],
+  },
+  "nested_submenu": {
+    name: "This is a nested submenu",
+    options: [
+      ["Some private Telegram group", null, "https://t.me/joinchat/ABCDEFGHIJKLMNOPQRSTUVWXYZ"],
+      ["Some public Telegram group", null, "https://t.me/PUBLIC-GROUP-NAME"],
+      ["[Return to submenu 2]", "submenu_2", null],
+    ],
+  },
+}
+
