@@ -1,10 +1,20 @@
 import * as TelegramBot from "node-telegram-bot-api";
-import {token, command, start_menu, menus} from "./config";
+import {token, command, start_menu, start_groups, menus} from "./config";
 
 const bot = new TelegramBot(token, {polling: true});
 
+console.log("Running and connected to Telegram API.");
+
 bot.onText(command, (msg) => {
-  sendMenu(msg, start_menu);
+  let menu = start_menu;
+  if (msg.chat.type === "group" ||
+      msg.chat.type === "supergroup") {
+    const start_group = start_groups[msg.chat.title];
+    if (start_group) {
+      menu = start_group;
+    }
+  }
+  sendMenu(msg, menu);
 });
 
 bot.on("callback_query", (query) => {

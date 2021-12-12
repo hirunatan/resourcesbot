@@ -1,6 +1,12 @@
 {
+  "name": "resourcesbot",
   "version": "0.1.0",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
+  "author": "Andrés Moya <hirunatan@hammo.org>",
+  "description": "Telegram Bot to make a browseable directory of the online resources of an organization.",
+  "homepage": "https://github.com/hirunatan/resourcesbot",
+  "repository": "github:hirunatan/resourcesbot",
+  "bugs": "https://github.com/hirunatan/resourcesbot/issues",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
@@ -11,8 +17,9 @@
     "node": ">=10"
   },
   "scripts": {
-    "start": "tsdx watch",
+    "start": "npm run build && npm run serve",
     "build": "tsdx build",
+    "serve": "node dist/index.js",
     "test": "tsdx test",
     "lint": "tsdx lint",
     "prepare": "tsdx build",
@@ -31,8 +38,6 @@
     "singleQuote": true,
     "trailingComma": "es5"
   },
-  "name": "stebot",
-  "author": "Andrés Moya",
   "module": "dist/stebot.esm.js",
   "size-limit": [
     {
