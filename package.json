@@ -17,9 +17,12 @@
     "node": ">=10"
   },
   "scripts": {
-    "start": "npm run build && npm run serve",
+    "start": "npm run build && npm-run-all --parallel watch serve",
+    "start:prod": "npm run build && npm run serve:prod",
     "build": "tsdx build",
-    "serve": "node dist/index.js",
+    "watch": "tsdx watch --verbose --noClean",
+    "serve": "NODE_ENV=development nodemon dist/index.js",
+    "serve:prod": "NODE_ENV=production node dist/index.js",
     "test": "tsdx test",
     "lint": "tsdx lint",
     "prepare": "tsdx build",
@@ -52,6 +55,8 @@
   "devDependencies": {
     "@size-limit/preset-small-lib": "^4.7.0",
     "husky": "^4.3.0",
+    "nodemon": "^2.0.15",
+    "npm-run-all": "^4.1.5",
     "size-limit": "^4.7.0",
     "tsdx": "^0.14.1",
     "tslib": "^2.0.3",
