@@ -13,22 +13,22 @@ export const directoryCommandDesc = "Directory of the resources of you organizat
 export const editCommand = "edit";
 export const editCommandDesc = "Edit directory";
 
-export const startMenu = "main";
-
-export const startGroups = {
-  "My Group Name": "special_menu"
-}
-
 export const menus = {
   "main": {
+    id: "main",
     title: "This is the main menu",
+    groupTitle: null,
+    isDefault: true,
     entries: [
       {text: "Submenu 1", menu: "submenu_1", url: null},
       {text: "Submenu 2", menu: "submenu_2", url: null},
     ],
   },
   "submenu_1": {
+    id: "submenu_1",
     title: "This is the first submenu",
+    groupTitle: null,
+    isDefault: false,
     entries: [
       {text: "Web", menu: null, url: "http://www.example.com"},
       {text: "Facebook", menu: null, url: "https://facebook.com/example"},
@@ -37,7 +37,10 @@ export const menus = {
     ],
   },
   "submenu_2": {
+    id: "submenu_2",
     title: "This is the second submenu",
+    groupTitle: null,
+    isDefault: false,
     entries: [
       {text: "Other web", menu: null, url: "https://other.example.com"},
       {text: "Nested submenu", menu: "nested_submenu", url: null},
@@ -45,7 +48,10 @@ export const menus = {
     ],
   },
   "nested_submenu": {
+    id: "nested_submenu",
     title: "This is a nested submenu",
+    groupTitle: null,
+    isDefault: false,
     entries: [
       {text: "Some private Telegram group", menu: null, url: "https://t.me/joinchat/ABCDEFGHIJKLMNOPQRSTUVWXYZ"},
       {text: "Some public Telegram group", menu: null, url: "https://t.me/PUBLIC-GROUP-NAME"},
@@ -53,7 +59,10 @@ export const menus = {
     ],
   },
   "special_menu": {
+    id: "special_submenu",
     title: "This is a menu specific for one telegram group",
+    groupTitle: "My Group Name",
+    isDefault: true,
     entries: [
       {text: "Private web", menu: null, url: "https://my-group.example.com"},
       {text: "Other private Telegram group", menu: null, url: "https://t.me/joinchat/2ABCDEFGHIJKLMNOPQRSTUVWXYZ"},

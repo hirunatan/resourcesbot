@@ -1,5 +1,8 @@
+import {initMenus} from "./menus";
 import {initTelegram} from "./telegram";
 
-initTelegram()
+initMenus();
+initTelegram();
+
 console.log("Running and connected to Telegram API.");
 

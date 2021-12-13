@@ -1,33 +1,19 @@
 import * as TelegramBot from "node-telegram-bot-api";
 import {token, directoryCommand, directoryCommandDesc, editCommand, editCommandDesc} from "./config";
-import {Menu, MenuEntry, getStartMenu, getMenu} from "./menus";
+import {Menu, MenuEntry, getDefaultMenu, getMenu} from "./menus";
 
-// See https://github.com/yagop/node-telegram-bot-api/blob/release/doc/api.md
+
+// === Setup =============
+
 const bot = new TelegramBot(token, {polling: true});
 
 export function initTelegram() {
   setupCommands();
 
-  bot.onText(new RegExp("/" + directoryCommand), (msg) => {
-    const groupTitle = getGroupTitle(msg);
-    const menu = getStartMenu(groupTitle);
-    sendMenu(msg, menu);
-  });
+  bot.onText(new RegExp("/" + directoryCommand), handleDirectory);
+  bot.onText(new RegExp("/" + editCommand), handleEdit);
 
-  bot.onText(new RegExp("/" + editCommand), (msg) => {
-    bot.sendMessage(
-      msg.chat.id,
-      "hola"
-    );
-  });
-
-  bot.on("callback_query", (query) => {
-    // Respond to a keyboard callback button pressed
-    // that has menuId of a submenu to navigate
-    const msg = query.message;
-    const menuId = query.data;
-    editMenu(msg, menuId);
-  });
+  bot.on("callback_query", handleQuery);
 }
 
 function setupCommands() {
@@ -60,6 +46,34 @@ function setupCommands() {
   });
 }
 
+
+// === Command handlers =============
+
+function handleDirectory(msg) {
+  const groupTitle = getGroupTitle(msg);
+  getDefaultMenu(groupTitle, (menu: Menu) => {
+    sendMenu(msg, menu);
+  });
+}
+
+function handleEdit(msg) {
+  bot.sendMessage(
+    msg.chat.id,
+    "hola"
+  );
+}
+
+function handleQuery(query) {
+  // Respond to a keyboard callback button pressed
+  // that has menuId of a submenu to navigate.
+  const msg = query.message;
+  const menuId = query.data;
+  editMenu(msg, menuId);
+}
+
+
+// === Utility functions =============
+
 function getGroupTitle(msg) {
   if (msg.chat.type === "group" ||
       msg.chat.type === "supergroup") {
@@ -70,6 +84,8 @@ function getGroupTitle(msg) {
 }
 
 function sendMenu(msg, menu: Menu) {
+  // Send a new message containing a keyboard with all
+  // entries of the menu.
   const keyboard = menu2keyboard(menu);
   bot.sendMessage(
     msg.chat.id,
@@ -83,24 +99,27 @@ function sendMenu(msg, menu: Menu) {
 }
 
 function editMenu(msg, menuId: string) {
-  const menu = getMenu(menuId);
-  const keyboard = menu2keyboard(menu);
-  bot.editMessageText(
-    menu.title,
-    {
-      chat_id: msg.chat.id,
-      message_id: msg.message_id,
-    }
-  ).then((msg2) => {
-    bot.editMessageReplyMarkup(
+  // Edit the message with a new keyboard with
+  // the given menu.
+  getMenu(menuId, (menu: Menu) => {
+    const keyboard = menu2keyboard(menu);
+    bot.editMessageText(
+      menu.title,
       {
-        inline_keyboard: keyboard,
-      },
-      {
-        chat_id: msg2.chat.id,
-        message_id: msg2.message_id,
+        chat_id: msg.chat.id,
+        message_id: msg.message_id,
       }
-    );
+    ).then((msg2) => {
+      bot.editMessageReplyMarkup(
+        {
+          inline_keyboard: keyboard,
+        },
+        {
+          chat_id: msg2.chat.id,
+          message_id: msg2.message_id,
+        }
+      );
+    });
   });
 }
 
