@@ -8,7 +8,10 @@
 // https://t.me/yourname_bot
 export const token = "1234567890abcdefghijklmnopqrstuvwxyz";
 
-export const directoryCommand = /^\/directory/;
+export const directoryCommand = "directory";
+export const directoryCommandDesc = "Directory of the resources of you organization";
+export const editCommand = "edit";
+export const editCommandDesc = "Edit directory";
 
 export const startMenu = "main";
 

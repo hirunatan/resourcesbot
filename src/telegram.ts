@@ -1,16 +1,24 @@
 import * as TelegramBot from "node-telegram-bot-api";
-import {token, directoryCommand} from "./config";
+import {token, directoryCommand, directoryCommandDesc, editCommand, editCommandDesc} from "./config";
 import {Menu, MenuEntry, getStartMenu, getMenu} from "./menus";
 
 // See https://github.com/yagop/node-telegram-bot-api/blob/release/doc/api.md
 const bot = new TelegramBot(token, {polling: true});
 
 export function initTelegram() {
-  bot.onText(directoryCommand, (msg) => {
-    // Respond to /directory command
+  setupCommands();
+
+  bot.onText(new RegExp("/" + directoryCommand), (msg) => {
     const groupTitle = getGroupTitle(msg);
     const menu = getStartMenu(groupTitle);
     sendMenu(msg, menu);
+  });
+
+  bot.onText(new RegExp("/" + editCommand), (msg) => {
+    bot.sendMessage(
+      msg.chat.id,
+      "hola"
+    );
   });
 
   bot.on("callback_query", (query) => {
@@ -19,6 +27,36 @@ export function initTelegram() {
     const msg = query.message;
     const menuId = query.data;
     editMenu(msg, menuId);
+  });
+}
+
+function setupCommands() {
+  bot.setMyCommands([
+    {
+      command: directoryCommand,
+      description: directoryCommandDesc
+    }
+  ],
+  {
+    scope: JSON.stringify({
+      type: "default",
+    })
+  });
+
+  bot.setMyCommands([
+    {
+      command: directoryCommand,
+      description: directoryCommandDesc
+    },
+    {
+      command: editCommand,
+      description: editCommandDesc
+    }
+  ],
+  {
+    scope: JSON.stringify({
+      type: "all_chat_administrators",
+    })
   });
 }
 

@@ -15,8 +15,8 @@ organization.
 First, register a new bot with **@BotFather** [as explained
 here](https://core.telegram.org/bots#6-botfather).
 
- - You need to set at least a bot name, description and one command, that may
-   be "/directory" or whatever you want. Take note of the assigned token.
+ - You only are required to set the bot name and description, and recommended
+   a bot profile picture. Take note of the assigned token.
 
  - Perhaps you want to register a bot for private use while configuring it
    and a public one for real use. You can delete the private one after
@@ -29,8 +29,7 @@ npm install
 ```
 
 Copy the `/src/config.ts.example` to `src/config.ts` and modify it as you wish.
-You need to enter at least the token and command name you set up in the first
-step.
+You need to enter at least the token you got in the first step.
 
 Run the bot with
 
