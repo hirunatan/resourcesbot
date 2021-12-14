@@ -64,8 +64,12 @@ export function getAllMenus(groupTitle: string | null, cb) {
 }
 
 export function menu2Markdown(menu: Menu) {
-  return '*' + menu.title + '*\n' +
-    menu.entries.map(entry => (' \\- _' + entry.text + '_')).join('\n');
+  return (
+    '*' +
+    menu.title +
+    '*\n' +
+    menu.entries.map(entry => ' \\- _' + entry.text + '_').join('\n')
+  );
 }
 
 export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {

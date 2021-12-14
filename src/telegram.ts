@@ -1,5 +1,10 @@
 import * as TelegramBot from 'node-telegram-bot-api';
-import { Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton } from 'telegram-typings';
+import {
+  Message,
+  CallbackQuery,
+  InlineKeyboardMarkup,
+  InlineKeyboardButton,
+} from 'telegram-typings';
 import {
   token,
   directoryCommand,
@@ -13,7 +18,7 @@ import {
   getMenu,
   getAllMenus,
   menu2Markdown,
-  addEntryToMenu
+  addEntryToMenu,
 } from './menus';
 
 // === Setup =============
@@ -80,7 +85,10 @@ function handleEdit(msg: Message) {
         chooseMenu(msg, menus);
       });
     } else {
-      bot.sendMessage(msg.chat.id, 'Hay que ser administrador para hacer esto.');
+      bot.sendMessage(
+        msg.chat.id,
+        'Hay que ser administrador para hacer esto.'
+      );
     }
   });
 }
@@ -142,142 +150,145 @@ function sendMenu(msg: Message, menu: Menu) {
 function replaceMenu(msg: Message, menu: Menu) {
   // Edit the message with a new keyboard with the given menu.
   bot
-  .editMessageText(menu.title, {
-    chat_id: msg.chat.id,
-    message_id: msg.message_id,
-  })
-  .then((msg2: Message) => {
-    bot.editMessageReplyMarkup(menu2Keyboard(menu), {
-      chat_id: msg2.chat.id,
-      message_id: msg2.message_id,
+    .editMessageText(menu.title, {
+      chat_id: msg.chat.id,
+      message_id: msg.message_id,
+    })
+    .then((msg2: Message) => {
+      bot.editMessageReplyMarkup(menu2Keyboard(menu), {
+        chat_id: msg2.chat.id,
+        message_id: msg2.message_id,
+      });
     });
-  });
 }
 
 function menu2Keyboard(menu: Menu): InlineKeyboardMarkup {
   // A keyboard is a list of keys, grouped in rows,
   // that may be a link or a callback action.
-  return keyboardMarkup(menu.entries.map(entry => {
-    if (entry.menu) {
-      return [
-        actionKeyboardButton(entry.text,
-                             'nav-menu',
-                             { menuId: entry.menu }),
-      ];
-    } else if (entry.url) {
-      return [
-        urlKeyboardButton(entry.text, entry.url),
-      ];
-    } else {
-      return [];
-    }
-  }));
+  return keyboardMarkup(
+    menu.entries.map(entry => {
+      if (entry.menu) {
+        return [
+          actionKeyboardButton(entry.text, 'nav-menu', { menuId: entry.menu }),
+        ];
+      } else if (entry.url) {
+        return [urlKeyboardButton(entry.text, entry.url)];
+      } else {
+        return [];
+      }
+    })
+  );
 }
 
 function chooseMenu(msg: Message, menus: Menu[]) {
-  bot.sendMessage(
-    msg.chat.id,
-    'Elige qué menú quieres modificar',
-    {
-      reply_markup: keyboardMarkup(
-        menus.map(menu => {
-          return [
-            actionKeyboardButton(menu.title, 'edit-menu', { menuId: menu.id }),
-          ];
-        })
-      ),
-    }
-  );
+  bot.sendMessage(msg.chat.id, 'Elige qué menú quieres modificar', {
+    reply_markup: keyboardMarkup(
+      menus.map(menu => {
+        return [
+          actionKeyboardButton(menu.title, 'edit-menu', { menuId: menu.id }),
+        ];
+      })
+    ),
+  });
 }
 
 function editMenu(msg: Message, menu: Menu) {
-  bot.sendMessage(
-    msg.chat.id,
-    'Modificación de menu\n' + menu2Markdown(menu),
-    {
-      parse_mode: 'MarkdownV2',
-      reply_markup: keyboardMarkup([
-        [
-          actionKeyboardButton('Añadir entrada', 'add-entry', { menuId: menu.id }),
-          actionKeyboardButton('Borrar entrada', 'remove-entry', { menuId: menu.id }),
-        ],
-        [
-          actionKeyboardButton('Borrar menu', 'remove-menu', { menuId: menu.id }),
-          actionKeyboardButton('« Volver atrás', 'choose-menu', {}),
-        ]
-      ]),
-    },
-  );
+  bot.sendMessage(msg.chat.id, 'Modificación de menu\n' + menu2Markdown(menu), {
+    parse_mode: 'MarkdownV2',
+    reply_markup: keyboardMarkup([
+      [
+        actionKeyboardButton('Añadir entrada', 'add-entry', {
+          menuId: menu.id,
+        }),
+        actionKeyboardButton('Borrar entrada', 'remove-entry', {
+          menuId: menu.id,
+        }),
+      ],
+      [
+        actionKeyboardButton('Borrar menu', 'remove-menu', { menuId: menu.id }),
+        actionKeyboardButton('« Volver atrás', 'choose-menu', {}),
+      ],
+    ]),
+  });
 }
-
 
 function addEntry(msg: Message, menuId: string) {
   bot.sendMessage(
     msg.chat.id,
-    'Indica el tipo de entrada que quieres añadir:'+menuId,
+    'Indica el tipo de entrada que quieres añadir:' + menuId,
     {
       reply_markup: keyboardMarkup([
         [
-          actionKeyboardButton('Ir a otro menú', 'add-entry-menu', { menuId: menuId }),
-          actionKeyboardButton('Navegar a url', 'add-entry-url', { menuId: menuId }),
-          actionKeyboardButton('Ir al menú global', 'add-entry-glob', { menuId: menuId }),
-        ]
-      ])
+          actionKeyboardButton('Ir a otro menú', 'add-entry-menu', {
+            menuId: menuId,
+          }),
+          actionKeyboardButton('Navegar a url', 'add-entry-url', {
+            menuId: menuId,
+          }),
+          actionKeyboardButton('Ir al menú global', 'add-entry-glob', {
+            menuId: menuId,
+          }),
+        ],
+      ]),
     }
   );
 }
 
-
 function addEntryUrl(msg: Message, menuId: string) {
   bot
-  .sendMessage(
-    msg.chat.id,
-    'Ok. Por favor, responde a este mensaje con el título de la nueva entrada.'
-  )
-  .then((msg2: Message) => {
-    bot.onReplyToMessage(
-      msg2.chat.id,
-      msg2.message_id,
+    .sendMessage(
+      msg.chat.id,
+      'Ok. Por favor, responde a este mensaje con el título de la nueva entrada.'
+    )
+    .then((msg2: Message) => {
+      bot.onReplyToMessage(
+        msg2.chat.id,
+        msg2.message_id,
 
-      (reply1: Message) => {
-        bot
-        .sendMessage(
-          reply1.chat.id,
-          'Muy bien. Ahora responde a este mensaje indicando la dirección web a la que quieres ir.'
-        )
+        (reply1: Message) => {
+          bot
+            .sendMessage(
+              reply1.chat.id,
+              'Muy bien. Ahora responde a este mensaje indicando la dirección web a la que quieres ir.'
+            )
 
-        .then((msg3: Message) => {
-          bot.onReplyToMessage(
-            msg3.chat.id,
-            msg3.message_id,
+            .then((msg3: Message) => {
+              bot.onReplyToMessage(
+                msg3.chat.id,
+                msg3.message_id,
 
-            (reply2: Message) => {
-              addEntryToMenu(menuId, {
-                text: reply1.text || '',  // TODO: validate inputs
-                url: reply2.text || '',
-              },
-              (err, _, affectedDocument) => {
-                if (!err) {
-                  bot
-                  .sendMessage(
-                    reply2.chat.id,
-                    'Correcto! Entrada añadida. Puedes seguir modificando el menú.'
-                  )
+                (reply2: Message) => {
+                  addEntryToMenu(
+                    menuId,
+                    {
+                      text: reply1.text || '', // TODO: validate inputs
+                      url: reply2.text || '',
+                    },
+                    (err, _, affectedDocument) => {
+                      if (!err) {
+                        bot
+                          .sendMessage(
+                            reply2.chat.id,
+                            'Correcto! Entrada añadida. Puedes seguir modificando el menú.'
+                          )
 
-                  .then((msg4: Message) => {
-                    editMenu(msg4, affectedDocument);
-                  });
+                          .then((msg4: Message) => {
+                            editMenu(msg4, affectedDocument);
+                          });
+                      }
+                    }
+                  );
                 }
-              });
-            }
-          );
-        });
-      }
-    );
-  });
+              );
+            });
+        }
+      );
+    });
 }
 
-function keyboardMarkup(buttons: InlineKeyboardButton[][]): InlineKeyboardMarkup {
+function keyboardMarkup(
+  buttons: InlineKeyboardButton[][]
+): InlineKeyboardMarkup {
   return {
     inline_keyboard: buttons,
   };
@@ -290,7 +301,11 @@ function urlKeyboardButton(text: string, url: string): InlineKeyboardButton {
   };
 }
 
-function actionKeyboardButton(text: string, action: string, args: object): InlineKeyboardButton {
+function actionKeyboardButton(
+  text: string,
+  action: string,
+  args: object
+): InlineKeyboardButton {
   return {
     text: text,
     callback_data: JSON.stringify({
