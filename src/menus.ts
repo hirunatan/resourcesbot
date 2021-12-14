@@ -12,8 +12,8 @@ export interface Menu {
 
 export interface MenuEntry {
   text: string;
-  menu: string;
-  url: string;
+  menu?: string;
+  url?: string;
 }
 
 const db = {
@@ -34,9 +34,9 @@ export function initMenus() {
 }
 
 export function getDefaultMenu(groupTitle: string | null, cb) {
-  db.menus.findOne({ groupTitle: groupTitle, isDefault: true }, (err, doc) => {
+  db.menus.findOne({ groupTitle: groupTitle, isDefault: true }, (err, menu) => {
     if (!err) {
-      cb(doc);
+      cb(menu);
     } else {
       console.error('Error: ', err);
     }
@@ -44,11 +44,35 @@ export function getDefaultMenu(groupTitle: string | null, cb) {
 }
 
 export function getMenu(menuId: string, cb) {
-  db.menus.findOne({ id: menuId }, (err, doc) => {
+  db.menus.findOne({ id: menuId }, (err, menu) => {
     if (!err) {
-      cb(doc);
+      cb(menu);
     } else {
       console.error('Error: ', err);
     }
   });
+}
+
+export function getAllMenus(groupTitle: string | null, cb) {
+  db.menus.find({ groupTitle: groupTitle }, (err, menus) => {
+    if (!err) {
+      cb(menus);
+    } else {
+      console.error('Error: ', err);
+    }
+  });
+}
+
+export function menu2Markdown(menu: Menu) {
+  return '*' + menu.title + '*\n' +
+    menu.entries.map(entry => (' \\- _' + entry.text + '_')).join('\n');
+}
+
+export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {
+  db.menus.update(
+    { id: menuId },
+    { $push: { entries: entry } },
+    { returnUpdatedDocs: true },
+    cb
+  );
 }
