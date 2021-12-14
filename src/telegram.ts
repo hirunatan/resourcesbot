@@ -1,4 +1,5 @@
 import * as TelegramBot from "node-telegram-bot-api";
+import {Message, CallbackQuery, InlineKeyboardButton} from "telegram-typings";
 import {token, directoryCommand, directoryCommandDesc, editCommand, editCommandDesc} from "./config";
 import {Menu, MenuEntry, getDefaultMenu, getMenu} from "./menus";
 
@@ -49,41 +50,43 @@ function setupCommands() {
 
 // === Command handlers =============
 
-function handleDirectory(msg) {
+function handleDirectory(msg: Message) {
   const groupTitle = getGroupTitle(msg);
   getDefaultMenu(groupTitle, (menu: Menu) => {
     sendMenu(msg, menu);
   });
 }
 
-function handleEdit(msg) {
+function handleEdit(msg: Message) {
   bot.sendMessage(
     msg.chat.id,
     "hola"
   );
 }
 
-function handleQuery(query) {
+function handleQuery(query: CallbackQuery) {
   // Respond to a keyboard callback button pressed
   // that has menuId of a submenu to navigate.
   const msg = query.message;
-  const menuId = query.data;
-  editMenu(msg, menuId);
+  const menuId = query.data || "";
+  if (msg) {
+    editMenu(msg, menuId);
+  }
 }
 
 
 // === Utility functions =============
 
-function getGroupTitle(msg) {
+function getGroupTitle(msg: Message): string | null {
   if (msg.chat.type === "group" ||
       msg.chat.type === "supergroup") {
-    return msg.chat.title;
+    return msg.chat.title || "";
   } else {
     return null;
   }
 }
 
-function sendMenu(msg, menu: Menu) {
+function sendMenu(msg: Message, menu: Menu) {
   // Send a new message containing a keyboard with all
   // entries of the menu.
   const keyboard = menu2keyboard(menu);
@@ -98,7 +101,7 @@ function sendMenu(msg, menu: Menu) {
   );
 }
 
-function editMenu(msg, menuId: string) {
+function editMenu(msg: Message, menuId: string) {
   // Edit the message with a new keyboard with
   // the given menu.
   getMenu(menuId, (menu: Menu) => {
@@ -109,7 +112,7 @@ function editMenu(msg, menuId: string) {
         chat_id: msg.chat.id,
         message_id: msg.message_id,
       }
-    ).then((msg2) => {
+    ).then((msg2: Message) => {
       bot.editMessageReplyMarkup(
         {
           inline_keyboard: keyboard,
@@ -123,13 +126,13 @@ function editMenu(msg, menuId: string) {
   });
 }
 
-function menu2keyboard(menu: Menu) {
+function menu2keyboard(menu: Menu): InlineKeyboardButton[][] {
   // A keyboard is a list of keys, grouped in rows,
   // that may be a link or a callback action.
   return menu.entries.map(entry2keyRow);
 }
 
-function entry2keyRow(entry: MenuEntry) {
+function entry2keyRow(entry: MenuEntry): InlineKeyboardButton[] {
   const keyRow = [
     {
       text: entry.text,
