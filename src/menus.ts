@@ -58,19 +58,23 @@ export function getUserGroups(username: string): string[] | undefined {
 }
 
 export function getGroupMenus(groupTitle: string | null, cb) {
-  db.menus.find({ groupTitle: groupTitle }, (err, menus) => {
-    if (!err) {
-      cb(menus);
-    } else {
-      console.error('Error: ', err);
-    }
-  });
+  db.menus
+    .find({ groupTitle: groupTitle })
+    .sort({ isDefault: -1, title: 1})
+    .exec((err, menus) => {
+      if (!err) {
+        cb(menus);
+      } else {
+        console.error('Error: ', err);
+      }
+    });
 }
 
 export function menu2Markdown(menu: Menu) {
   return (
     '*' +
     menu.title +
+    menu.isDefault ? ' (*)' : '' +
     '*\n' +
     menu.entries.map(entry => ' \\- _' + entry.text + '_').join('\n')
   );

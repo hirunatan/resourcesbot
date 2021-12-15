@@ -21,6 +21,13 @@ import {
   menu2Markdown,
   addEntryToMenu,
 } from './menus';
+import {
+  getContext,
+  startDialog,
+  endDialog,
+  setState,
+  setValue,
+} from './context';
 
 // === Setup =============
 
@@ -31,6 +38,7 @@ export function initTelegram() {
 
   bot.onText(new RegExp('/' + directoryCommand), handleDirectory);
   bot.onText(new RegExp('/' + editCommand), handleEdit);
+  bot.onText(/^[^\/]/, handleTextMessage);
 
   bot.on('callback_query', handleCallback);
 }
@@ -98,7 +106,7 @@ function handleCallback(query: CallbackQuery) {
 
     case 'choose-group':
       if (msg) {
-        chooseGroup(msg, msg.chat?.username || '');
+        chooseGroup(msg, msg.chat.username || '');
       }
       break;
 
@@ -124,12 +132,42 @@ function handleCallback(query: CallbackQuery) {
       }
       break;
 
-    case 'add-entry-url':
+    case 'add-menu-entry':
       if (msg && data) {
-        addEntryUrl(msg, data);
+        addMenuEntry(msg, data);
+      }
+      break;
+
+    case 'add-menu-entry-menu':
+      if (msg && data) {
+        addMenuEntryMenu(msg, data);
+      }
+      break;
+
+    case 'add-url-entry':
+      if (msg && data) {
+        addUrlEntry(msg, data);
       }
       break;
   }
+}
+
+function handleTextMessage(msg: Message) {
+  getContext(msg, (context) => {
+    switch (context?.state) {
+      case 'add-menu-entry-title':
+        addMenuEntryTitle(msg);
+        break;
+
+      case 'add-url-entry-title':
+        addUrlEntryTitle(msg);
+        break;
+
+      case 'add-url-entry-url':
+        addUrlEntryUrl(msg);
+        break;
+    }
+  });
 }
 
 // === Utility functions =============
@@ -214,7 +252,10 @@ function chooseMenu(msg: Message, menus: Menu[]) {
     reply_markup: keyboardMarkup(
       menus.map((menu: Menu) => {
         return [
-          actionKeyboardButton(menu.title, 'edit-menu', menu.id),
+          actionKeyboardButton(
+            menu.title + (menu.isDefault ? ' (*)' : ''),
+            'edit-menu',
+            menu.id),
         ];
       }).concat([
         [
@@ -242,71 +283,156 @@ function editMenu(msg: Message, menu: Menu) {
 }
 
 function addEntry(msg: Message, menuId: string) {
-  bot.sendMessage(
-    msg.chat.id,
-    'Indica el tipo de entrada que quieres añadir:',
-    {
-      reply_markup: keyboardMarkup([
-        [
-          actionKeyboardButton('Ir a otro menú', 'add-entry-menu', menuId),
-          actionKeyboardButton('Navegar a url', 'add-entry-url', menuId),
-          actionKeyboardButton('Ir al menú global', 'add-entry-glob', menuId),
-        ],
-      ]),
-    }
-  );
-}
-
-function addEntryUrl(msg: Message, menuId: string) {
   bot
     .sendMessage(
       msg.chat.id,
-      'Ok. Por favor, responde a este mensaje con el título de la nueva entrada.'
+      'Indica el tipo de entrada que quieres añadir:',
+      {
+        reply_markup: keyboardMarkup([
+          [
+            actionKeyboardButton('Ir a otro menú', 'add-menu-entry', menuId),
+            actionKeyboardButton('Navegar a url', 'add-url-entry', menuId),
+            actionKeyboardButton('Ir al menú global', 'add-global-entry', menuId),
+          ],
+        ]),
+      }
     )
     .then((msg2: Message) => {
-      bot.onReplyToMessage(
-        msg2.chat.id,
-        msg2.message_id,
-
-        (reply1: Message) => {
-          bot
-            .sendMessage(
-              reply1.chat.id,
-              'Muy bien. Ahora responde a este mensaje indicando la dirección web a la que quieres ir.'
-            )
-
-            .then((msg3: Message) => {
-              bot.onReplyToMessage(
-                msg3.chat.id,
-                msg3.message_id,
-
-                (reply2: Message) => {
-                  addEntryToMenu(
-                    menuId,
-                    {
-                      text: reply1.text || '', // TODO: validate inputs
-                      url: reply2.text || '',
-                    },
-                    (err, _, affectedDocument) => {
-                      if (!err) {
-                        bot
-                          .sendMessage(
-                            reply2.chat.id,
-                            'Correcto! Entrada añadida. Puedes seguir modificando el menú.'
-                          )
-
-                          .then((msg4: Message) => {
-                            editMenu(msg4, affectedDocument);
-                          });
-                      }
-                    }
-                  );
-                }
-              );
-            });
-        }
-      );
+      startDialog(msg, 'add-entry');
     });
+}
+
+function addMenuEntry(msg: Message, menuId: string) {
+  setValue(msg, 'menuId', menuId, () => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Ok. Por favor, escribe el título de la nueva entrada.'
+      )
+      .then((msg2: Message) => {
+        setState(msg, 'add-menu-entry-title');
+      });
+  });
+}
+
+function addMenuEntryTitle(msg: Message) {
+  setValue(msg, 'entryTitle', msg.text || '', () => {
+    getContext(msg, (context) => {
+      getMenu(context.menuId, (menu) => {
+        getGroupMenus(menu.groupTitle, (menus) => {
+          const otherMenus = menus.filter((m) => m.id !== context.menuId);
+          if (otherMenus.length === 0) {
+            bot
+              .sendMessage(
+                msg.chat.id,
+                'Lo siento, no hay otros menús a los que puedas navegar desde aquí.'
+              )
+              .then((msg2: Message) => {
+                editMenu(msg2, menu);
+              });
+          } else {
+            bot
+              .sendMessage(
+                msg.chat.id,
+                'Muy bien. Ahora escribe el menú al que quieres navegar.', {
+                  reply_markup: keyboardMarkup(
+                      otherMenus.map((menu: Menu) => {
+                        return [
+                          actionKeyboardButton(menu.title, 'add-menu-entry-menu', menu.id)
+                        ]
+                      })
+                  )
+                })
+              .then((msg2: Message) => {
+                setState(msg, 'add-menu-entry-menu');
+              });
+          }
+        });
+      });
+    });
+  });
+}
+
+function addMenuEntryMenu(msg: Message, menuId: string) {
+  setValue(msg, 'entryMenu', menuId, () => {
+    getContext(msg, (context) => {
+      if (context.menuId && context.entryTitle && context.entryMenu) {
+        addEntryToMenu(
+          context.menuId,
+          {
+            text: context.entryTitle, // TODO: validate inputs
+            menu: context.entryMenu,
+          },
+          (err, _, affectedDocument) => {
+            if (!err) {
+              bot
+                .sendMessage(
+                  msg.chat.id,
+                  'Correcto! Entrada añadida. Puedes seguir modificando el menú.'
+                )
+                .then((msg2: Message) => {
+                  editMenu(msg2, affectedDocument);
+                });
+            }
+          }
+        );
+      }
+    });
+  });
+}
+
+function addUrlEntry(msg: Message, menuId: string) {
+  setValue(msg, 'menuId', menuId, () => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Ok. Por favor, escribe el título de la nueva entrada.'
+      )
+      .then((msg2: Message) => {
+        setState(msg, 'add-url-entry-title');
+      });
+  });
+}
+
+function addUrlEntryTitle(msg: Message) {
+  setValue(msg, 'entryTitle', msg.text || '', () => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Muy bien. Ahora escribe la dirección web a la que quieres ir.'
+      )
+      .then((msg2: Message) => {
+        setState(msg, 'add-url-entry-url');
+      });
+  });
+}
+
+function addUrlEntryUrl(msg: Message) {
+  setValue(msg, 'entryUrl', msg.text || '', () => {
+    getContext(msg, (context) => {
+      if (context.menuId && context.entryTitle && context.entryUrl) {
+        addEntryToMenu(
+          context.menuId,
+          {
+            text: context.entryTitle, // TODO: validate inputs
+            url: context.entryUrl,
+          },
+          (err, _, affectedDocument) => {
+            if (!err) {
+              bot
+                .sendMessage(
+                  msg.chat.id,
+                  'Correcto! Entrada añadida. Puedes seguir modificando el menú.'
+                )
+                .then((msg2: Message) => {
+                  editMenu(msg2, affectedDocument);
+                });
+            }
+          }
+        );
+      }
+    });
+  });
 }
 
 function keyboardMarkup(
