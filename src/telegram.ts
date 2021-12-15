@@ -16,7 +16,8 @@ import {
   Menu,
   getDefaultMenu,
   getMenu,
-  getAllMenus,
+  getUserGroups,
+  getGroupMenus,
   menu2Markdown,
   addEntryToMenu,
 } from './menus';
@@ -62,7 +63,7 @@ function setupCommands() {
     ],
     {
       scope: JSON.stringify({
-        type: 'all_chat_administrators',
+        type: 'all_private_chats',
       }),
     }
   );
@@ -78,52 +79,54 @@ function handleDirectory(msg: Message) {
 }
 
 function handleEdit(msg: Message) {
-  bot.getChatMember(msg.chat?.id, msg.from?.id).then(member => {
-    if (member.status === 'creator' || member.status === 'administrator') {
-      const groupTitle = getGroupTitle(msg);
-      getAllMenus(groupTitle, (menus: Menu[]) => {
-        chooseMenu(msg, menus);
-      });
-    } else {
-      bot.sendMessage(
-        msg.chat.id,
-        'Hay que ser administrador para hacer esto.'
-      );
-    }
-  });
+  chooseGroup(msg, msg.from?.username || '');
 }
 
 function handleCallback(query: CallbackQuery) {
   // Respond to a keyboard callback button pressed
   // that has menuId of a submenu to navigate.
   const msg = query.message;
-  const { action, args } = JSON.parse(query.data || '');
+  const { action, data } = JSON.parse(query.data || '');
   switch (action) {
     case 'nav-menu':
-      if (msg && args.menuId) {
-        getMenu(args.menuId, (menu: Menu) => {
+      if (msg && data) {
+        getMenu(data, (menu: Menu) => {
           replaceMenu(msg, menu);
         });
       }
       break;
 
+    case 'choose-group':
+      if (msg) {
+        chooseGroup(msg, msg.chat?.username || '');
+      }
+      break;
+
+    case 'choose-menu':
+      if (msg && (data !== undefined)) {
+        getGroupMenus(data, (menus: Menu[]) => {
+          chooseMenu(msg, menus);
+        });
+      }
+      break;
+
     case 'edit-menu':
-      if (msg && args.menuId) {
-        getMenu(args.menuId, (menu: Menu) => {
+      if (msg && data) {
+        getMenu(data, (menu: Menu) => {
           editMenu(msg, menu);
         });
       }
       break;
 
     case 'add-entry':
-      if (msg && args.menuId) {
-        addEntry(msg, args.menuId);
+      if (msg && data) {
+        addEntry(msg, data);
       }
       break;
 
     case 'add-entry-url':
-      if (msg && args.menuId) {
-        addEntryUrl(msg, args.menuId);
+      if (msg && data) {
+        addEntryUrl(msg, data);
       }
       break;
   }
@@ -169,7 +172,7 @@ function menu2Keyboard(menu: Menu): InlineKeyboardMarkup {
     menu.entries.map(entry => {
       if (entry.menu) {
         return [
-          actionKeyboardButton(entry.text, 'nav-menu', { menuId: entry.menu }),
+          actionKeyboardButton(entry.text, 'nav-menu', entry.menu),
         ];
       } else if (entry.url) {
         return [urlKeyboardButton(entry.text, entry.url)];
@@ -180,15 +183,45 @@ function menu2Keyboard(menu: Menu): InlineKeyboardMarkup {
   );
 }
 
+function chooseGroup(msg: Message, username: string) {
+  const groups = getUserGroups(username);
+  if (!groups || groups.length == 0) {
+    bot.sendMessage(
+      msg.chat.id,
+      'Lo siento, no tienes autorización para editar ningún grupo. ' +
+        'Habla con los administradores del bot para que te autoricen.',
+    );
+  } else if (groups.length == 1) {
+    getGroupMenus(groups[0], (menus: Menu[]) => {
+      chooseMenu(msg, menus);
+    });
+  } else {
+    bot.sendMessage(msg.chat.id, 'Elige un grupo para editar sus menús:', {
+      reply_markup: keyboardMarkup(
+        groups.map((group: string) => {
+          const groupName = group ? group : 'Menús globales';
+          return [
+            actionKeyboardButton(groupName, 'choose-menu', group),
+          ];
+        })
+      )
+    });
+  }
+}
+
 function chooseMenu(msg: Message, menus: Menu[]) {
   bot.sendMessage(msg.chat.id, 'Elige qué menú quieres modificar', {
     reply_markup: keyboardMarkup(
-      menus.map(menu => {
+      menus.map((menu: Menu) => {
         return [
-          actionKeyboardButton(menu.title, 'edit-menu', { menuId: menu.id }),
+          actionKeyboardButton(menu.title, 'edit-menu', menu.id),
         ];
-      })
-    ),
+      }).concat([
+        [
+          actionKeyboardButton('« Volver a grupos', 'choose-group', ''),
+        ]
+      ])
+    )
   });
 }
 
@@ -197,16 +230,12 @@ function editMenu(msg: Message, menu: Menu) {
     parse_mode: 'MarkdownV2',
     reply_markup: keyboardMarkup([
       [
-        actionKeyboardButton('Añadir entrada', 'add-entry', {
-          menuId: menu.id,
-        }),
-        actionKeyboardButton('Borrar entrada', 'remove-entry', {
-          menuId: menu.id,
-        }),
+        actionKeyboardButton('Añadir entrada', 'add-entry', menu.id),
+        actionKeyboardButton('Borrar entrada', 'remove-entry', menu.id),
       ],
       [
-        actionKeyboardButton('Borrar menu', 'remove-menu', { menuId: menu.id }),
-        actionKeyboardButton('« Volver atrás', 'choose-menu', {}),
+        actionKeyboardButton('Borrar menu', 'remove-menu', menu.id),
+        actionKeyboardButton('« Volver a menús', 'choose-menu', menu.groupTitle),
       ],
     ]),
   });
@@ -215,19 +244,13 @@ function editMenu(msg: Message, menu: Menu) {
 function addEntry(msg: Message, menuId: string) {
   bot.sendMessage(
     msg.chat.id,
-    'Indica el tipo de entrada que quieres añadir:' + menuId,
+    'Indica el tipo de entrada que quieres añadir:',
     {
       reply_markup: keyboardMarkup([
         [
-          actionKeyboardButton('Ir a otro menú', 'add-entry-menu', {
-            menuId: menuId,
-          }),
-          actionKeyboardButton('Navegar a url', 'add-entry-url', {
-            menuId: menuId,
-          }),
-          actionKeyboardButton('Ir al menú global', 'add-entry-glob', {
-            menuId: menuId,
-          }),
+          actionKeyboardButton('Ir a otro menú', 'add-entry-menu', menuId),
+          actionKeyboardButton('Navegar a url', 'add-entry-url', menuId),
+          actionKeyboardButton('Ir al menú global', 'add-entry-glob', menuId),
         ],
       ]),
     }
@@ -304,13 +327,13 @@ function urlKeyboardButton(text: string, url: string): InlineKeyboardButton {
 function actionKeyboardButton(
   text: string,
   action: string,
-  args: object
+  data: string | null
 ): InlineKeyboardButton {
   return {
     text: text,
     callback_data: JSON.stringify({
       action: action,
-      args: args,
+      data: data,
     }),
   };
 }

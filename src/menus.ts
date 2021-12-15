@@ -1,6 +1,6 @@
 import * as Datastore from 'nedb';
 
-import { menus } from './config';
+import { users, menus } from './config';
 
 export interface Menu {
   id: string;
@@ -53,7 +53,11 @@ export function getMenu(menuId: string, cb) {
   });
 }
 
-export function getAllMenus(groupTitle: string | null, cb) {
+export function getUserGroups(username: string): string[] | undefined {
+  return users[username];
+}
+
+export function getGroupMenus(groupTitle: string | null, cb) {
   db.menus.find({ groupTitle: groupTitle }, (err, menus) => {
     if (!err) {
       cb(menus);
