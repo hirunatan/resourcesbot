@@ -3,15 +3,27 @@ import { Message } from 'telegram-typings';
 
 const contexts = new Datastore();
 
-export function startDialog(msg: Message, initialState: string) {
-  contexts.update(
-    { id: msg.chat.id },
-    {
-      id: msg.chat.id,
-      state: initialState
-    },
-    { upsert: true, }
-  );
+export function startDialog(msg: Message, initialState: string, cb) {
+  if (cb) {
+    contexts.update(
+      { id: msg.chat.id },
+      {
+        id: msg.chat.id,
+        state: initialState
+      },
+      { upsert: true, },
+      cb
+    );
+  } else {
+    contexts.update(
+      { id: msg.chat.id },
+      {
+        id: msg.chat.id,
+        state: initialState
+      },
+      { upsert: true, }
+    );
+  }
 }
 
 export function endDialog(msg: Message) {

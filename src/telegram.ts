@@ -8,18 +8,20 @@ import {
 import {
   token,
   directoryCommand,
-  directoryCommandDesc,
+  // directoryCommandDesc,
   editCommand,
-  editCommandDesc,
+  // editCommandDesc,
 } from './config';
 import {
   Menu,
+  MenuEntry,
   getDefaultMenu,
   getMenu,
   getUserGroups,
   getGroupMenus,
   menu2Markdown,
   addEntryToMenu,
+  removeEntryFromMenu,
 } from './menus';
 import {
   getContext,
@@ -34,7 +36,7 @@ import {
 const bot = new TelegramBot(token, { polling: true });
 
 export function initTelegram() {
-  setupCommands();
+  // setupCommands();
 
   bot.onText(new RegExp('/' + directoryCommand), handleDirectory);
   bot.onText(new RegExp('/' + editCommand), handleEdit);
@@ -43,39 +45,39 @@ export function initTelegram() {
   bot.on('callback_query', handleCallback);
 }
 
-function setupCommands() {
-  bot.setMyCommands(
-    [
-      {
-        command: directoryCommand,
-        description: directoryCommandDesc,
-      },
-    ],
-    {
-      scope: JSON.stringify({
-        type: 'default',
-      }),
-    }
-  );
-
-  bot.setMyCommands(
-    [
-      {
-        command: directoryCommand,
-        description: directoryCommandDesc,
-      },
-      {
-        command: editCommand,
-        description: editCommandDesc,
-      },
-    ],
-    {
-      scope: JSON.stringify({
-        type: 'all_private_chats',
-      }),
-    }
-  );
-}
+// function setupCommands() {
+//   bot.setMyCommands(
+//     [
+//       {
+//         command: directoryCommand,
+//         description: directoryCommandDesc,
+//       },
+//     ],
+//     {
+//       scope: JSON.stringify({
+//         type: 'default',
+//       }),
+//     }
+//   );
+//
+//   bot.setMyCommands(
+//     [
+//       {
+//         command: directoryCommand,
+//         description: directoryCommandDesc,
+//       },
+//       {
+//         command: editCommand,
+//         description: editCommandDesc,
+//       },
+//     ],
+//     {
+//       scope: JSON.stringify({
+//         type: 'all_private_chats',
+//       }),
+//     }
+//   );
+// }
 
 // === Command handlers =============
 
@@ -147,6 +149,18 @@ function handleCallback(query: CallbackQuery) {
     case 'add-url-entry':
       if (msg && data) {
         addUrlEntry(msg, data);
+      }
+      break;
+
+    case 'remove-entry':
+      if (msg && data) {
+        removeEntry(msg, data);
+      }
+      break;
+
+    case 'remove-entry-entry':
+      if (msg && data) {
+        removeEntryEntry(msg, data);
       }
       break;
   }
@@ -298,7 +312,7 @@ function addEntry(msg: Message, menuId: string) {
       }
     )
     .then((msg2: Message) => {
-      startDialog(msg, 'add-entry');
+      startDialog(msg2, 'add-entry', null);
     });
 }
 
@@ -432,6 +446,48 @@ function addUrlEntryUrl(msg: Message) {
         );
       }
     });
+  });
+}
+
+function removeEntry(msg: Message, menuId: string) {
+  getMenu(menuId, (menu) => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Elige la entrada que quieres borrar', {
+          reply_markup: keyboardMarkup(
+            menu.entries.map((entry: MenuEntry) => {
+              return [
+                actionKeyboardButton(entry.text, 'remove-entry-entry', entry.text.slice(0, 20))
+              ];
+            })
+          )
+        }
+      )
+      .then((msg2: Message) => {
+        startDialog(msg2, 'remove-entry-entry', () => {
+          setValue(msg2, 'menuId', menuId, () => null);
+        });
+      });
+  });
+}
+
+function removeEntryEntry(msg: Message, entryText: string) {
+  getContext(msg, (context) => {
+    removeEntryFromMenu(
+      context.menuId,
+      entryText,
+      (err, _, affectedDocument) => {
+        bot
+          .sendMessage(
+            msg.chat.id,
+            'Correcto! Entrada borrada. Puedes seguir modificando el menú.'
+          )
+          .then((msg2: Message) => {
+            editMenu(msg2, affectedDocument);
+          });
+      }
+    );
   });
 }
 

@@ -74,7 +74,7 @@ export function menu2Markdown(menu: Menu) {
   return (
     '*' +
     menu.title +
-    menu.isDefault ? ' (*)' : '' +
+    (menu.isDefault ? ' \\(\\*\\)' : '') +
     '*\n' +
     menu.entries.map(entry => ' \\- _' + entry.text + '_').join('\n')
   );
@@ -87,4 +87,20 @@ export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {
     { returnUpdatedDocs: true },
     cb
   );
+}
+
+export function removeEntryFromMenu(menuId: string, entryText: string, cb) {
+  db.menus.findOne({ id: menuId }, (err, menu) => {
+    if (!err) {
+      const newEntries = menu.entries.filter((e) => !e.text.startsWith(entryText));
+      db.menus.update(
+        { id: menuId },
+        { $set: { entries: newEntries } },
+        { returnUpdatedDocs: true },
+        cb
+      );
+    } else {
+      console.error('Error: ', err);
+    }
+  });
 }
