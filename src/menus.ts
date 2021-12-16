@@ -100,6 +100,14 @@ export function addNewMenu(title: string, groupTitle: string, cb) {
   }, cb);
 }
 
+export function removeWholeMenu(menuId: string, cb) {
+  db.menus.remove(
+    { id: menuId },
+    {},
+    cb
+  );
+}
+
 export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {
   db.menus.update(
     { id: menuId },

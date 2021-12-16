@@ -22,6 +22,7 @@ import {
   menu2Html,
   // menu2Markdown,
   addNewMenu,
+  removeWholeMenu,
   addEntryToMenu,
   removeEntryFromMenu,
   moveEntryInMenu,
@@ -181,6 +182,18 @@ function handleCallback(query: CallbackQuery) {
     case 'move-entry-entry':
       if (msg && data) {
         moveEntryEntry(msg, data);
+      }
+      break;
+
+    case 'remove-menu':
+      if (msg && data) {
+        removeMenu(msg, data);
+      }
+      break;
+
+    case 'remove-menu-confirm':
+      if (msg && data) {
+        removeMenuConfirm(msg, data);
       }
       break;
   }
@@ -645,6 +658,37 @@ function moveEntryPos(msg: Message) {
           }
         );
       }
+    });
+  });
+}
+
+function removeMenu(msg: Message, menuId: string) {
+  getMenu(menuId, (menu) => {
+    bot.sendMessage(
+      msg.chat.id,
+      'ATENCIÓN: Vas a borrar el menú ' + menu.title + '.', {
+        reply_markup: keyboardMarkup([
+          [ actionKeyboardButton('CONFIRMAR', 'remove-menu-confirm', menuId) ],
+          [ actionKeyboardButton('Cancelar', 'edit-menu', menuId) ],
+        ])
+      }
+    );
+  });
+}
+
+function removeMenuConfirm(msg: Message, menuId: string) {
+  getMenu(menuId, (menu) => {
+    removeWholeMenu(menuId, () => {
+      bot
+        .sendMessage(
+          msg.chat.id,
+          'Ok, menú borrado. Puedes elegir otro para editar.',
+        )
+        .then((msg2: Message) => {
+          getGroupMenus(menu.groupTitle, (menus: Menu[]) => {
+            chooseMenu(msg, menus);
+          });
+        });
     });
   });
 }
