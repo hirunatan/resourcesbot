@@ -22,6 +22,7 @@ import {
   menu2Html,
   // menu2Markdown,
   addNewMenu,
+  changeMenuTitle,
   removeWholeMenu,
   addEntryToMenu,
   removeEntryFromMenu,
@@ -191,6 +192,12 @@ function handleCallback(query: CallbackQuery) {
       }
       break;
 
+    case 'rename-menu':
+      if (msg && data) {
+        renameMenu(msg, data);
+      }
+      break;
+
     case 'remove-menu':
       if (msg && data) {
         removeMenu(msg, data);
@@ -230,6 +237,10 @@ function handleTextMessage(msg: Message) {
 
       case 'move-entry-pos':
         moveEntryPos(msg);
+        break;
+
+      case 'rename-menu-title':
+        renameMenuTitle(msg);
         break;
     }
   });
@@ -376,6 +387,7 @@ function editMenu(msg: Message, menu: Menu) {
     buttons.push(actionKeyboardButton('Borrar entrada', 'remove-entry', menu.id));
     buttons.push(actionKeyboardButton('Mover entrada', 'move-entry', menu.id));
   }
+  buttons.push(actionKeyboardButton('Renombrar menú', 'rename-menu', menu.id));
   buttons.push(actionKeyboardButton('Añadir menú', 'add-menu', menu.groupTitle));
   if (!menu.isDefault) {
     buttons.push(actionKeyboardButton('Borrar menú', 'remove-menu', menu.id));
@@ -416,6 +428,9 @@ function addEntry(msg: Message, menuId: string) {
             actionKeyboardButton('Navegar a url', 'add-url-entry', menuId),
             actionKeyboardButton('Ir al menú global', 'add-global-entry', menuId),
           ],
+          [
+            actionKeyboardButton('« Volver al menú', 'edit-menu', menuId),
+          ]
         ]),
       }
     )
@@ -611,7 +626,11 @@ function removeEntry(msg: Message, menuId: string) {
               return [
                 actionKeyboardButton(entry.text, 'remove-entry-entry', index.toString())
               ];
-            })
+            }).concat([
+              [
+                actionKeyboardButton('« Volver al menú', 'edit-menu', menuId),
+              ]
+            ])
           )
         }
       )
@@ -653,7 +672,11 @@ function moveEntry(msg: Message, menuId: string) {
               return [
                 actionKeyboardButton(entry.text, 'move-entry-entry', index.toString())
               ];
-            })
+            }).concat([
+              [
+                actionKeyboardButton('« Volver al menú', 'edit-menu', menuId),
+              ]
+            ])
           )
         }
       )
@@ -711,6 +734,39 @@ function moveEntryPos(msg: Message) {
           }
         );
       }
+    });
+  });
+}
+
+function renameMenu(msg: Message, menuId: string) {
+  setValue(msg, 'menuId', menuId, () => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Por favor, escribe nuevo título del menú.'
+      )
+      .then((msg2: Message) => {
+        startDialog(msg2, 'rename-menu-title', () => {
+          setValue(msg2, 'menuId', menuId, () => {});
+        });
+      });
+  });
+}
+
+function renameMenuTitle(msg: Message) {
+  getContext(msg, (context) => {
+    changeMenuTitle(
+      context.menuId,
+      msg.text || '',
+      (err, _, affectedDocument) => {
+        bot
+          .sendMessage(
+            msg.chat.id,
+            'Correcto! Título cambiado. Puedes seguir modificando el menú.'
+          )
+          .then((msg2: Message) => {
+            editMenu(msg2, affectedDocument);
+          });
     });
   });
 }
