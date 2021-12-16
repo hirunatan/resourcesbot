@@ -161,6 +161,12 @@ function handleCallback(query: CallbackQuery) {
       }
       break;
 
+    case 'add-global-entry':
+      if (msg && data) {
+        addGlobalEntry(msg, data);
+      }
+      break;
+
     case 'remove-entry':
       if (msg && data) {
         removeEntry(msg, data);
@@ -216,6 +222,10 @@ function handleTextMessage(msg: Message) {
 
       case 'add-url-entry-url':
         addUrlEntryUrl(msg);
+        break;
+
+      case 'add-global-entry-title':
+        addGlobalEntryTitle(msg);
         break;
 
       case 'move-entry-pos':
@@ -542,6 +552,49 @@ function addUrlEntryUrl(msg: Message) {
             }
           }
         );
+      }
+    });
+  });
+}
+
+function addGlobalEntry(msg: Message, menuId: string) {
+  setValue(msg, 'menuId', menuId, () => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Ok. Por favor, escribe el título de la nueva entrada.'
+      )
+      .then((msg2: Message) => {
+        setState(msg, 'add-global-entry-title');
+      });
+  });
+}
+
+function addGlobalEntryTitle(msg: Message) {
+  setValue(msg, 'entryTitle', msg.text || '', () => {
+    getContext(msg, (context) => {
+      if (context.menuId && context.entryTitle) {
+        getDefaultMenu(null, (globalMenu) => {
+          addEntryToMenu(
+            context.menuId,
+            {
+              text: context.entryTitle, // TODO: validate inputs
+              menu: globalMenu.id,
+            },
+            (err, _, affectedDocument) => {
+              if (!err) {
+                bot
+                  .sendMessage(
+                    msg.chat.id,
+                    'Correcto! Entrada añadida. Puedes seguir modificando el menú.'
+                  )
+                  .then((msg2: Message) => {
+                    editMenu(msg2, affectedDocument);
+                  });
+              }
+            }
+          );
+        });
       }
     });
   });
