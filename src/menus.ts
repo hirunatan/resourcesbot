@@ -70,6 +70,16 @@ export function getGroupMenus(groupTitle: string | null, cb) {
     });
 }
 
+export function menu2Html(menu: Menu) {
+  return (
+    '<b>' +
+    menu.title +
+    (menu.isDefault ? ' (*)' : '') +
+    '</b>\n' +
+    menu.entries.map(entry => '<i> - ' + entry.text + '</i>').join('\n')
+  );
+}
+
 export function menu2Markdown(menu: Menu) {
   return (
     '*' +
@@ -89,10 +99,10 @@ export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {
   );
 }
 
-export function removeEntryFromMenu(menuId: string, entryText: string, cb) {
+export function removeEntryFromMenu(menuId: string, entryIndex: number, cb) {
   db.menus.findOne({ id: menuId }, (err, menu) => {
     if (!err) {
-      const newEntries = menu.entries.filter((e) => !e.text.startsWith(entryText));
+      const newEntries = removeAt(menu.entries, entryIndex);
       db.menus.update(
         { id: menuId },
         { $set: { entries: newEntries } },
@@ -104,3 +114,40 @@ export function removeEntryFromMenu(menuId: string, entryText: string, cb) {
     }
   });
 }
+
+export function moveEntryInMenu(menuId: string, entryIndex: number, newIndex: number, cb) {
+  db.menus.findOne({ id: menuId }, (err, menu) => {
+    if (!err) {
+      const newEntries = moveArrayElement(menu.entries, entryIndex, newIndex); 
+      db.menus.update(
+        { id: menuId },
+        { $set: { entries: newEntries } },
+        { returnUpdatedDocs: true },
+        cb
+      );
+    } else {
+      console.error('Error: ', err);
+    }
+  });
+}
+
+function moveArrayElement(array, index, destIndex) {
+  if (index <= destIndex) {
+    const [before, after] = splitArray(array, destIndex + 1);
+    const before2 = removeAt(before, index);
+    return before2.concat([array[index]]).concat(after);
+  } else {
+    const [before, after] = splitArray(array, destIndex);
+    const after2 = removeAt(after, index - before.length);
+    return before.concat([array[index]]).concat(after2);
+  }
+}
+
+function splitArray(array, index) {
+  return [array.slice(0, index), array.slice(index)];
+}
+
+function removeAt(array, index) {
+  return array.slice(0, index).concat(array.slice(index + 1));
+}
+

@@ -19,9 +19,11 @@ import {
   getMenu,
   getUserGroups,
   getGroupMenus,
-  menu2Markdown,
+  menu2Html,
+  // menu2Markdown,
   addEntryToMenu,
   removeEntryFromMenu,
+  moveEntryInMenu,
 } from './menus';
 import {
   getContext,
@@ -93,8 +95,7 @@ function handleEdit(msg: Message) {
 }
 
 function handleCallback(query: CallbackQuery) {
-  // Respond to a keyboard callback button pressed
-  // that has menuId of a submenu to navigate.
+  // Respond to a keyboard callback button pressed.
   const msg = query.message;
   const { action, data } = JSON.parse(query.data || '');
   switch (action) {
@@ -163,6 +164,18 @@ function handleCallback(query: CallbackQuery) {
         removeEntryEntry(msg, data);
       }
       break;
+
+    case 'move-entry':
+      if (msg && data) {
+        moveEntry(msg, data);
+      }
+      break;
+
+    case 'move-entry-entry':
+      if (msg && data) {
+        moveEntryEntry(msg, data);
+      }
+      break;
   }
 }
 
@@ -179,6 +192,10 @@ function handleTextMessage(msg: Message) {
 
       case 'add-url-entry-url':
         addUrlEntryUrl(msg);
+        break;
+
+      case 'move-entry-pos':
+        moveEntryPos(msg);
         break;
     }
   });
@@ -281,19 +298,38 @@ function chooseMenu(msg: Message, menus: Menu[]) {
 }
 
 function editMenu(msg: Message, menu: Menu) {
-  bot.sendMessage(msg.chat.id, 'Modificación de menu\n' + menu2Markdown(menu), {
-    parse_mode: 'MarkdownV2',
-    reply_markup: keyboardMarkup([
-      [
-        actionKeyboardButton('Añadir entrada', 'add-entry', menu.id),
-        actionKeyboardButton('Borrar entrada', 'remove-entry', menu.id),
-      ],
-      [
-        actionKeyboardButton('Borrar menu', 'remove-menu', menu.id),
-        actionKeyboardButton('« Volver a menús', 'choose-menu', menu.groupTitle),
-      ],
-    ]),
+  const buttons: InlineKeyboardButton[] = [];
+  buttons.push(actionKeyboardButton('Añadir entrada', 'add-entry', menu.id));
+  if (menu.entries.length > 0) {
+    buttons.push(actionKeyboardButton('Borrar entrada', 'remove-entry', menu.id));
+    buttons.push(actionKeyboardButton('Mover entrada', 'move-entry', menu.id));
+  }
+  buttons.push(actionKeyboardButton('Añadir menú', 'add-menu', menu.id));
+  if (!menu.isDefault) {
+    buttons.push(actionKeyboardButton('Borrar menú', 'remove-menu', menu.id));
+  }
+  buttons.push(actionKeyboardButton('« Volver a menús', 'choose-menu', menu.groupTitle));
+
+  // Group buttons in rows by two
+  let button_rows: InlineKeyboardButton[][] = [];
+  while (buttons.length > 0) {
+    let button_row: InlineKeyboardButton[] = [];
+    button_row.push(buttons.shift()!);
+    if (buttons.length > 0) {
+      button_row.push(buttons.shift()!);
+    }
+    button_rows.push(button_row);
+  }
+
+  bot.sendMessage(msg.chat.id, 'Modificación de menú\n' + menu2Html(menu), {
+    parse_mode: 'HTML',
+    reply_markup: keyboardMarkup(button_rows),
   });
+
+  // bot.sendMessage(msg.chat.id, 'Modificación de menú\n' + menu2Markdown(menu), {
+  //   parse_mode: 'MarkdownV2',
+  //   reply_markup: keyboardMarkup(button_rows),
+  // });
 }
 
 function addEntry(msg: Message, menuId: string) {
@@ -456,9 +492,9 @@ function removeEntry(msg: Message, menuId: string) {
         msg.chat.id,
         'Elige la entrada que quieres borrar', {
           reply_markup: keyboardMarkup(
-            menu.entries.map((entry: MenuEntry) => {
+            menu.entries.map((entry: MenuEntry, index: number) => {
               return [
-                actionKeyboardButton(entry.text, 'remove-entry-entry', entry.text.slice(0, 20))
+                actionKeyboardButton(entry.text, 'remove-entry-entry', index.toString())
               ];
             })
           )
@@ -472,11 +508,11 @@ function removeEntry(msg: Message, menuId: string) {
   });
 }
 
-function removeEntryEntry(msg: Message, entryText: string) {
+function removeEntryEntry(msg: Message, entryIndex: string) {
   getContext(msg, (context) => {
     removeEntryFromMenu(
       context.menuId,
-      entryText,
+      parseInt(entryIndex),
       (err, _, affectedDocument) => {
         bot
           .sendMessage(
@@ -488,6 +524,79 @@ function removeEntryEntry(msg: Message, entryText: string) {
           });
       }
     );
+  });
+}
+
+function moveEntry(msg: Message, menuId: string) {
+  getMenu(menuId, (menu) => {
+    bot
+      .sendMessage(
+        msg.chat.id,
+        'Elige la entrada que quieres mover', {
+          reply_markup: keyboardMarkup(
+            menu.entries.map((entry: MenuEntry, index: number) => {
+              return [
+                actionKeyboardButton(entry.text, 'move-entry-entry', index.toString())
+              ];
+            })
+          )
+        }
+      )
+      .then((msg2: Message) => {
+        startDialog(msg2, 'move-entry-entry', () => {
+          setValue(msg2, 'menuId', menuId, () => null);
+        });
+      });
+  });
+}
+
+function moveEntryEntry(msg: Message, entryIndex: string) {
+  setValue(msg, 'entryIndex', entryIndex, () => {
+    getContext(msg, (context) => {
+      getMenu(context.menuId, (menu) => {
+        bot
+          .sendMessage(
+            msg.chat.id,
+            'Ok. Ahora dime a qué posición la quieres mover ' +
+              '(un número del 1 al ' + menu.entries.length + ').'
+          )
+          .then((msg2: Message) => {
+            setState(msg, 'move-entry-pos');
+          });
+      });
+    });
+  });
+}
+
+function moveEntryPos(msg: Message) {
+  getContext(msg, (context) => {
+    getMenu(context.menuId, (menu) => {
+
+      const intPos = parseInt(msg.text || '', 10);
+      if (!(intPos >= 1 && intPos <= menu.entries.length)) {
+        bot.sendMessage(
+          msg.chat.id,
+          'Esa posición no es correcta. Tiene que ser ' +
+            'un número del 1 al ' + menu.entries.length + '.'
+          )
+      } else {
+        moveEntryInMenu(
+          context.menuId,
+          parseInt(context.entryIndex),
+          intPos - 1,
+          (err, _, affectedDocument) => {
+            bot
+            .sendMessage(
+              msg.chat.id,
+              'Correcto! Entrada movida. Puedes seguir modificando el menú.'
+            )
+            .then((msg2: Message) => {
+              editMenu(msg2, affectedDocument);
+            });
+          }
+        );
+      }
+    });
   });
 }
 
