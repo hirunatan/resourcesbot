@@ -26,10 +26,11 @@ export function startDialog(msg: Message, initialState: string, cb) {
   }
 }
 
-export function endDialog(msg: Message) {
+export function endDialog(msg: Message, cb) {
   contexts.remove(
     { id: msg.chat.id },
-    {}
+    {},
+    cb
   );
 }
 

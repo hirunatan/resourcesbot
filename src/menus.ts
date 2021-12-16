@@ -90,6 +90,16 @@ export function menu2Markdown(menu: Menu) {
   );
 }
 
+export function addNewMenu(title: string, groupTitle: string, cb) {
+  db.menus.insert({
+    id: title.slice(0, 30).toLowerCase().replace(' ', '_'),
+    title: title,
+    groupTitle: groupTitle,
+    isDefault: false,
+    entries: [],
+  }, cb);
+}
+
 export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {
   db.menus.update(
     { id: menuId },

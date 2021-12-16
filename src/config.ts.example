@@ -13,6 +13,10 @@ export const directoryCommandDesc = "Directory of the resources of you organizat
 export const editCommand = "edit";
 export const editCommandDesc = "Edit directory";
 
+export const users = {
+  'YourUser': [null, 'My Group Name'],
+};
+
 export const menus = {
   "main": {
     id: "main",

@@ -21,6 +21,7 @@ import {
   getGroupMenus,
   menu2Html,
   // menu2Markdown,
+  addNewMenu,
   addEntryToMenu,
   removeEntryFromMenu,
   moveEntryInMenu,
@@ -121,6 +122,12 @@ function handleCallback(query: CallbackQuery) {
       }
       break;
 
+    case 'add-menu':
+      if (msg) {
+        addMenu(msg, data);
+      }
+      break;
+
     case 'edit-menu':
       if (msg && data) {
         getMenu(data, (menu: Menu) => {
@@ -182,6 +189,10 @@ function handleCallback(query: CallbackQuery) {
 function handleTextMessage(msg: Message) {
   getContext(msg, (context) => {
     switch (context?.state) {
+      case 'add-menu-title':
+        addMenuTitle(msg);
+        break;
+
       case 'add-menu-entry-title':
         addMenuEntryTitle(msg);
         break;
@@ -297,6 +308,44 @@ function chooseMenu(msg: Message, menus: Menu[]) {
   });
 }
 
+function addMenu(msg: Message, groupTitle: string) {
+  startDialog(msg, 'add-menu-title', () => {
+    setValue(msg, 'groupTitle', groupTitle, () => {
+      bot.sendMessage(
+        msg.chat.id,
+        'Ok. Por favor, escribe el título del menú.'
+      );
+    });
+  });
+}
+
+function addMenuTitle(msg: Message) {
+  setValue(msg, 'menuTitle', msg.text || '', () => {
+    getContext(msg, (context) => {
+      if (context.menuTitle) {
+        addNewMenu(
+          context.menuTitle,
+          context.groupTitle,
+          (err, menu) => {
+            if (!err) {
+              bot
+                .sendMessage(
+                  msg.chat.id,
+                  'Correcto! Menú añadido. Ahora puedes añadirle opciones.'
+                )
+                .then((msg2: Message) => {
+                  endDialog(msg2, () => {
+                    editMenu(msg2, menu);
+                  });
+                });
+            }
+          }
+        );
+      }
+    });
+  });
+}
+
 function editMenu(msg: Message, menu: Menu) {
   const buttons: InlineKeyboardButton[] = [];
   buttons.push(actionKeyboardButton('Añadir entrada', 'add-entry', menu.id));
@@ -304,7 +353,7 @@ function editMenu(msg: Message, menu: Menu) {
     buttons.push(actionKeyboardButton('Borrar entrada', 'remove-entry', menu.id));
     buttons.push(actionKeyboardButton('Mover entrada', 'move-entry', menu.id));
   }
-  buttons.push(actionKeyboardButton('Añadir menú', 'add-menu', menu.id));
+  buttons.push(actionKeyboardButton('Añadir menú', 'add-menu', menu.groupTitle));
   if (!menu.isDefault) {
     buttons.push(actionKeyboardButton('Borrar menú', 'remove-menu', menu.id));
   }
