@@ -1,4 +1,4 @@
-import * as Datastore from 'nedb';
+import * as loki from 'lokijs';
 
 import { users, menus } from './config';
 
@@ -16,58 +16,38 @@ export interface MenuEntry {
   url?: string;
 }
 
-const db = {
-  menus: new Datastore({ filename: './menus.db', autoload: true }),
-};
-
-export function initMenus() {
-  // Auto compact database each 10 minutes
-  db.menus.persistence.setAutocompactionInterval(600000);
-
-  db.menus.count({ groupTitle: null }, (err, count) => {
-    if (!err && count === 0) {
+const db = new loki('./menus.db', {
+  autoload: true,
+  autosave: true,
+  autosaveInterval: 4000,
+  autoloadCallback: () => {
+    db.menus = db.getCollection('menus');
+    if (!db.menus) {
+      db.menus = db.addCollection('menus', { autoupdate: true });
       for (let menu of Object.values(menus)) {
         db.menus.insert(menu);
       }
     }
-  });
+  },
+});
+
+export function getDefaultMenu(groupTitle: string | null): Menu {
+  return db.menus.findOne({ groupTitle: groupTitle, isDefault: true });
 }
 
-export function getDefaultMenu(groupTitle: string | null, cb) {
-  db.menus.findOne({ groupTitle: groupTitle, isDefault: true }, (err, menu) => {
-    if (!err) {
-      cb(menu);
-    } else {
-      console.error('Error: ', err);
-    }
-  });
-}
-
-export function getMenu(menuId: string, cb) {
-  db.menus.findOne({ id: menuId }, (err, menu) => {
-    if (!err) {
-      cb(menu);
-    } else {
-      console.error('Error: ', err);
-    }
-  });
+export function getMenu(menuId: string): Menu {
+  return db.menus.findOne({ id: menuId });
 }
 
 export function getUserGroups(username: string): string[] | undefined {
   return users[username];
 }
 
-export function getGroupMenus(groupTitle: string | null, cb) {
-  db.menus
+export function getGroupMenus(groupTitle: string | null): Menu[] {
+  return db.menus.chain()
     .find({ groupTitle: groupTitle })
-    .sort({ isDefault: -1, title: 1})
-    .exec((err, menus) => {
-      if (!err) {
-        cb(menus);
-      } else {
-        console.error('Error: ', err);
-      }
-    });
+    .compoundsort([['isDefault', true], ['title', false]])
+    .data();
 }
 
 export function menu2Html(menu: Menu) {
@@ -90,72 +70,47 @@ export function menu2Markdown(menu: Menu) {
   );
 }
 
-export function addNewMenu(title: string, groupTitle: string, cb) {
-  db.menus.insert({
+export function addNewMenu(title: string, groupTitle: string): Menu {
+  return db.menus.insert({
     id: title.slice(0, 30).toLowerCase().replace(' ', '_'),
     title: title,
     groupTitle: groupTitle,
     isDefault: false,
     entries: [],
-  }, cb);
-}
-
-export function changeMenuTitle(menuId: string, title: string, cb) {
-  db.menus.update(
-    { id: menuId },
-    { $set: { title: title } },
-    { returnUpdatedDocs: true },
-    cb
-  );
-}
-
-export function removeWholeMenu(menuId: string, cb) {
-  db.menus.remove(
-    { id: menuId },
-    {},
-    cb
-  );
-}
-
-export function addEntryToMenu(menuId: string, entry: MenuEntry, cb) {
-  db.menus.update(
-    { id: menuId },
-    { $push: { entries: entry } },
-    { returnUpdatedDocs: true },
-    cb
-  );
-}
-
-export function removeEntryFromMenu(menuId: string, entryIndex: number, cb) {
-  db.menus.findOne({ id: menuId }, (err, menu) => {
-    if (!err) {
-      const newEntries = removeAt(menu.entries, entryIndex);
-      db.menus.update(
-        { id: menuId },
-        { $set: { entries: newEntries } },
-        { returnUpdatedDocs: true },
-        cb
-      );
-    } else {
-      console.error('Error: ', err);
-    }
   });
 }
 
-export function moveEntryInMenu(menuId: string, entryIndex: number, newIndex: number, cb) {
-  db.menus.findOne({ id: menuId }, (err, menu) => {
-    if (!err) {
-      const newEntries = moveArrayElement(menu.entries, entryIndex, newIndex); 
-      db.menus.update(
-        { id: menuId },
-        { $set: { entries: newEntries } },
-        { returnUpdatedDocs: true },
-        cb
-      );
-    } else {
-      console.error('Error: ', err);
-    }
-  });
+export function changeMenuTitle(menuId: string, title: string): Menu {
+  const menu = db.menus.findOne({ id: menuId });
+  menu.title = title;
+  db.menus.update(menu);
+  return menu;
+}
+
+export function removeWholeMenu(menuId: string): void {
+  const menu = db.menus.findOne({ id: menuId });
+  db.menus.remove(menu);
+}
+
+export function addEntryToMenu(menuId: string, entry: MenuEntry): Menu {
+  const menu = db.menus.findOne({ id: menuId });
+  menu.entries.push(entry);
+  db.menus.update(menu);
+  return menu;
+}
+
+export function removeEntryFromMenu(menuId: string, entryIndex: number): Menu {
+  const menu = db.menus.findOne({ id: menuId });
+  menu.entries = removeAt(menu.entries, entryIndex);
+  db.menus.update(menu);
+  return menu;
+}
+
+export function moveEntryInMenu(menuId: string, entryIndex: number, newIndex: number): Menu {
+  const menu = db.menus.findOne({ id: menuId });
+  menu.entries = moveArrayElement(menu.entries, entryIndex, newIndex); 
+  db.menus.update(menu);
+  return menu;
 }
 
 function moveArrayElement(array, index, destIndex) {

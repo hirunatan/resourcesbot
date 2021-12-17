@@ -1,63 +1,58 @@
-import * as Datastore from 'nedb';
+import * as loki from 'lokijs';
+
 import { Message } from 'telegram-typings';
 
-const contexts = new Datastore();
+export interface Context {
+  id: string;
+  state: string;
+  values: any;
+}
 
-export function startDialog(msg: Message, initialState: string, cb) {
-  if (cb) {
-    contexts.update(
-      { id: msg.chat.id },
-      {
-        id: msg.chat.id,
-        state: initialState
-      },
-      { upsert: true, },
-      cb
-    );
+const db = new loki('Contexts', { verbose: true });
+
+db.contexts = db.addCollection(
+  'contexts', {
+    indices: ['id'],
+    ttl: 300000,             // Context expire at 5 minutes
+    ttlInterval: 300000,     // and are automatically purged
+  });
+
+export function startDialog(msg: Message, initialState: string): Context {
+  let context = db.contexts.findOne({ id: msg.chat.id });
+  if (context) {
+    context.state = initialState;
+    db.contexts.update(context);
+    return context;
   } else {
-    contexts.update(
-      { id: msg.chat.id },
-      {
-        id: msg.chat.id,
-        state: initialState
-      },
-      { upsert: true, }
-    );
+    return db.contexts.insert({
+      id: msg.chat.id,
+      state: initialState,
+      values: {},
+    });
   }
 }
 
-export function endDialog(msg: Message, cb) {
-  contexts.remove(
-    { id: msg.chat.id },
-    {},
-    cb
-  );
+export function endDialog(msg: Message): void {
+  const context = db.contexts.findOne({ id: msg.chat.id });
+  db.contexts.remove(context);
 }
 
-export function setState(msg: Message, state: string) {
-  contexts.update(
-    { id: msg.chat.id },
-    { $set: { state: state } },
-    { returnUpdatedDocs: true }
-  );
+export function setState(msg: Message, state: string): Context {
+  const context = db.contexts.findOne({ id: msg.chat.id });
+  context.state = state;
+  db.contexts.update(context);
+  return context;
 }
 
-export function setValue(msg: Message, key: string, value: string, cb) {
-  contexts.update(
-    { id: msg.chat.id },
-    { $set: { [key]: value } },
-    { returnUpdatedDocs: true },
-    cb
-  );
+export function setValue(msg: Message, key: string, value: string): Context {
+  const context = db.contexts.findOne({ id: msg.chat.id });
+  context.values[key] = value;
+  db.contexts.update(context);
+  return context;
 }
 
-export function getContext(msg: Message, cb) {
-  contexts.findOne({ id: msg.chat.id }, (err, context) => {
-    if (!err) {
-      cb(context);
-    } else {
-      console.error('Error: ', err);
-    }
-  });
+export function getContext(msg: Message): Context {
+  const context = db.contexts.findOne({ id: msg.chat.id });
+  return context;
 }
 
