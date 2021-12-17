@@ -8,9 +8,9 @@ import {
 import {
   token,
   directoryCommand,
-  // directoryCommandDesc,
+  directoryCommandDesc,
   editCommand,
-  // editCommandDesc,
+  editCommandDesc,
 } from './config';
 import {
   Menu,
@@ -20,7 +20,7 @@ import {
   getUserGroups,
   getGroupMenus,
   menu2Html,
-  // menu2Markdown,
+  menu2Markdown,
   addNewMenu,
   changeMenuTitle,
   removeWholeMenu,
@@ -41,7 +41,7 @@ import {
 const bot = new TelegramBot(token, { polling: true });
 
 export function initTelegram() {
-  // setupCommands();
+  setupCommands();
 
   bot.onText(new RegExp('/' + directoryCommand), handleDirectory);
   bot.onText(new RegExp('/' + editCommand), handleEdit);
@@ -50,39 +50,39 @@ export function initTelegram() {
   bot.on('callback_query', handleCallback);
 }
 
-// function setupCommands() {
-//   bot.setMyCommands(
-//     [
-//       {
-//         command: directoryCommand,
-//         description: directoryCommandDesc,
-//       },
-//     ],
-//     {
-//       scope: JSON.stringify({
-//         type: 'default',
-//       }),
-//     }
-//   );
-//
-//   bot.setMyCommands(
-//     [
-//       {
-//         command: directoryCommand,
-//         description: directoryCommandDesc,
-//       },
-//       {
-//         command: editCommand,
-//         description: editCommandDesc,
-//       },
-//     ],
-//     {
-//       scope: JSON.stringify({
-//         type: 'all_private_chats',
-//       }),
-//     }
-//   );
-// }
+function setupCommands() {
+  bot.setMyCommands(
+    [
+      {
+        command: directoryCommand,
+        description: directoryCommandDesc,
+      },
+    ],
+    {
+      scope: JSON.stringify({
+        type: 'default',
+      }),
+    }
+  );
+
+  bot.setMyCommands(
+    [
+      {
+        command: directoryCommand,
+        description: directoryCommandDesc,
+      },
+      {
+        command: editCommand,
+        description: editCommandDesc,
+      },
+    ],
+    {
+      scope: JSON.stringify({
+        type: 'all_private_chats',
+      }),
+    }
+  );
+}
 
 // === Command handlers =============
 
