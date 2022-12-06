@@ -44,7 +44,7 @@ export function setState(msg: Message, state: string): Context {
   return context;
 }
 
-export function setValue(msg: Message, key: string, value: string): Context {
+export function setValue(msg: Message, key: string, value: string | null): Context {
   const context = db.contexts.findOne({ id: msg.chat.id });
   context.values[key] = value;
   db.contexts.update(context);

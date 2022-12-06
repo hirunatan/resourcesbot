@@ -1,6 +1,6 @@
 import * as loki from 'lokijs';
 
-import { users, menus } from './config';
+import { users, initialMenus } from './config';
 
 export interface Menu {
   id: string;
@@ -24,7 +24,7 @@ const db = new loki('./menus.db', {
     db.menus = db.getCollection('menus');
     if (!db.menus) {
       db.menus = db.addCollection('menus', { autoupdate: true });
-      for (let menu of Object.values(menus)) {
+      for (let menu of Object.values(initialMenus)) {
         db.menus.insert(menu);
       }
     }
@@ -41,6 +41,23 @@ export function getMenu(menuId: string): Menu {
 
 export function getUserGroups(username: string): string[] | undefined {
   return users[username];
+}
+
+export function truncTitle(groupTitle: string | null): string | null {
+  // callback_data has a length limit, so before including a groupTitle
+  // inside it we must truncate it.
+  return groupTitle ? groupTitle.substr(0, 25) : null;
+}
+
+export function resolveGroupTitle(groupTitleTrunc: string | null): string | null {
+  // restores the full title from a truncated data
+  if (!groupTitleTrunc) {
+    return null;
+  } else {
+    let menus = db.menus.find();
+    let groupTitles = menus.map((menu) => menu.groupTitle);
+    return groupTitles.find((groupTitle) => groupTitle && groupTitle.startsWith(groupTitleTrunc));
+  }
 }
 
 export function getGroupMenus(groupTitle: string | null): Menu[] {
@@ -70,7 +87,7 @@ export function menu2Markdown(menu: Menu) {
   );
 }
 
-export function addNewMenu(title: string, groupTitle: string): Menu {
+export function addNewMenu(title: string, groupTitle: string | null): Menu {
   return db.menus.insert({
     id: title.slice(0, 30).toLowerCase().replace(' ', '_'),
     title: title,

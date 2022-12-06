@@ -18,6 +18,8 @@ import {
   getDefaultMenu,
   getMenu,
   getUserGroups,
+  truncTitle,
+  resolveGroupTitle,
   getGroupMenus,
   menu2Html,
   menu2Markdown,
@@ -116,14 +118,16 @@ function handleCallback(query: CallbackQuery) {
 
     case 'choose-menu':
       if (msg && (data !== undefined)) {
-        const menus = getGroupMenus(data);
+        const groupTitle = resolveGroupTitle(data);
+        const menus = getGroupMenus(groupTitle);
         chooseMenu(msg, menus);
       }
       break;
 
     case 'add-menu':
       if (msg) {
-        addMenu(msg, data);
+        const groupTitle = resolveGroupTitle(data);
+        addMenu(msg, groupTitle);
       }
       break;
 
@@ -309,7 +313,7 @@ function chooseGroup(msg: Message, username: string) {
         groups.map((group: string) => {
           const groupName = group ? group : 'Menús globales';
           return [
-            actionKeyboardButton(groupName, 'choose-menu', group),
+            actionKeyboardButton(groupName, 'choose-menu', truncTitle(group)),
           ];
         })
       )
@@ -336,7 +340,7 @@ function chooseMenu(msg: Message, menus: Menu[]) {
   });
 }
 
-function addMenu(msg: Message, groupTitle: string) {
+function addMenu(msg: Message, groupTitle: string | null) {
   startDialog(msg, 'add-menu-title');
   setValue(msg, 'groupTitle', groupTitle);
   bot.sendMessage(
@@ -370,11 +374,11 @@ function editMenu(msg: Message, menu: Menu) {
     buttons.push(actionKeyboardButton('Mover entrada', 'move-entry', menu.id));
   }
   buttons.push(actionKeyboardButton('Renombrar menú', 'rename-menu', menu.id));
-  buttons.push(actionKeyboardButton('Añadir menú', 'add-menu', menu.groupTitle));
+  buttons.push(actionKeyboardButton('Añadir menú', 'add-menu', truncTitle(menu.groupTitle)));
   if (!menu.isDefault) {
     buttons.push(actionKeyboardButton('Borrar menú', 'remove-menu', menu.id));
   }
-  buttons.push(actionKeyboardButton('« Volver a menús', 'choose-menu', menu.groupTitle));
+  buttons.push(actionKeyboardButton('« Volver a menús', 'choose-menu', truncTitle(menu.groupTitle)));
 
   // Group buttons in rows by two
   let button_rows: InlineKeyboardButton[][] = [];

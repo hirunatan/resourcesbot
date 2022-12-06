@@ -14,10 +14,10 @@ export const editCommand = "edit";
 export const editCommandDesc = "Edit directory";
 
 export const users = {
-  'YourUser': [null, 'My Group Name'],
+  'YourUser': [null, 'Your Group Name'],
 };
 
-export const menus = {
+export const initialMenus = {
   "main": {
     id: "main",
     title: "This is the main menu",
