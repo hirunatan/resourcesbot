@@ -1,6 +1,7 @@
 # App specific files
 src/config.ts
 menus.db
+deploy.sh
 
 # Logs
 logs
